@@ -37,6 +37,10 @@
 - PRs should include: summary, motivation, how to reproduce/verify, and any macOS/WeChat version specifics.
 - Attach relevant log snippets from `logs/wechat_mcp.log` when debugging Accessibility issues.
 
+## Versioning & Releases
+- The package version comes from git tags (`vMAJOR.MINOR.PATCH`) via `hatch-vcs`; do not edit a version in
+  `pyproject.toml`. See `docs/releasing.md` for the bump rules and how to cut a release.
+
 ## Agent-Specific Instructions
 - Keep diffs minimal and localized; avoid large refactors unless explicitly requested.
 - Preserve existing logging, error handling, and transport behavior when extending features.
