@@ -11,6 +11,10 @@
 - Run the MCP server (stdio): `uv run wechat-mcp --transport stdio`.
 - Run over HTTP/SSE: `uv run wechat-mcp --transport streamable-http` or `--transport sse`.
 - Enable protocol debugging: `uv run wechat-mcp --mcp-debug --transport stdio`.
+- Point an MCP client at a checkout with `uv run --project <repo> wechat-mcp`; `uvx --from <repo>` caches
+  its build and will not pick up edits to `src/`.
+- Inspect WeChat's UI tree with `scripts/dump_ax_tree.py`; write dumps under `debug-artifacts/`
+  (git-ignored, they contain real chat names). See `docs/debugging-moments-layouts.md`.
 
 ## Coding Style & Naming
 - Python 3.12+, PEP 8 style, 4-space indentation, type hints where practical.
