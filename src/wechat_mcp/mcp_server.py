@@ -4,7 +4,7 @@ import argparse
 import logging
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from .logging_config import logger
 from .add_contact_by_wechat_id_utils import (
@@ -16,7 +16,7 @@ from .reply_to_messages_by_chat_utils import send_message
 from .wechat_accessibility import get_current_chat_name, open_chat_for_contact
 
 
-mcp = FastMCP("WeChat Helper MCP Server")
+mcp = MCPServer("WeChat Helper MCP Server")
 
 
 @mcp.tool()

@@ -76,7 +76,7 @@ The project consists of several key modules:
 
 The main MCP server implementation that:
 
-- Creates a `FastMCP` server instance
+- Creates an `MCPServer` instance (`mcp.server.mcpserver`, MCP Python SDK 2.x)
 - Defines the tool functions decorated with `@mcp.tool()`
   - `fetch_messages_by_chat(...)`
   - `reply_to_messages_by_chat(...)`
@@ -220,7 +220,7 @@ From `pyproject.toml`:
 pyobjc >= 12.1                          # macOS accessibility bridge
 pyobjc-framework-applicationservices   # Accessibility frameworks
 pillow >= 10.0.0                        # Image processing for sender detection
-mcp[cli] >= 1.0.0                       # MCP server framework
+mcp[cli] >= 2.0.0, < 3                  # MCP server framework
 ```
 
 ## Supported Transports

@@ -29,7 +29,7 @@ dependencies = [
     "pyobjc>=12.1",
     "pyobjc-framework-applicationservices>=12.1",
     "pillow>=10.0.0",
-    "mcp[cli]>=1.0.0",
+    "mcp[cli]>=2.0.0,<3",
 ]
 
 [project.urls]
