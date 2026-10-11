@@ -10,6 +10,8 @@
 
 </div>
 
+> This is an independent fork of [BiboyQG/WeChat-MCP](https://github.com/BiboyQG/WeChat-MCP) by Banghao Chi, published to PyPI as `wechat-mcp-xiongwe`. It is maintained separately and is not endorsed by the original author.
+
 An MCP server that automates WeChat on macOS using the Accessibility API and screen capture. It enables LLMs to interact with WeChat chats programmatically.
 
 ## Features

@@ -10,6 +10,8 @@
 
 </div>
 
+> 本项目是 Banghao Chi 的 [BiboyQG/WeChat-MCP](https://github.com/BiboyQG/WeChat-MCP) 的独立 fork，以 `wechat-mcp-xiongwe` 的名称发布到 PyPI。它由 fork 维护者单独维护，不代表原作者的认可。
+
 一个基于 macOS 无障碍 API 和屏幕截图的 MCP 服务器，可自动化操作微信。它让 LLM 能够以编程方式与微信聊天进行交互。
 
 ## 功能特性

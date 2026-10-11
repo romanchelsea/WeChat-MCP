@@ -4,7 +4,11 @@ dynamic = ["version"]
 description = "WeChat MCP server for reading and replying to messages via macOS Accessibility APIs"
 readme = "README.md"
 requires-python = ">=3.12"
-authors = [{ name = "Banghao Chi", email = "banghao2@illinois.edu" }]
+authors = [
+    { name = "Banghao Chi", email = "banghao2@illinois.edu" },
+    { name = "Roman Wang" },
+]
+maintainers = [{ name = "Roman Wang" }]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
