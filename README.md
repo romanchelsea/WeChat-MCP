@@ -3,7 +3,7 @@
 # WeChat MCP Server
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![PyPI version](https://img.shields.io/pypi/v/wechat-mcp-server.svg)](https://pypi.org/project/wechat-mcp-server/)
+[![PyPI version](https://img.shields.io/pypi/v/wechat-mcp-xiongwe.svg)](https://pypi.org/project/wechat-mcp-xiongwe/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 [中文](docs/README_zh.md) | English
@@ -26,7 +26,7 @@ An MCP server that automates WeChat on macOS using the Accessibility API and scr
 ### Installation
 
 ```bash
-pip install wechat-mcp-server
+pip install wechat-mcp-xiongwe
 ```
 
 ### Setup with Claude Code

@@ -1,5 +1,5 @@
 [project]
-name = "wechat-mcp-server"
+name = "wechat-mcp-xiongwe"
 dynamic = ["version"]
 description = "WeChat MCP server for reading and replying to messages via macOS Accessibility APIs"
 readme = "README.md"

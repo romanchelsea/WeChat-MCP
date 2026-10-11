@@ -26,7 +26,7 @@
 ### 安装
 
 ```bash
-pip install wechat-mcp-server
+pip install wechat-mcp-xiongwe
 ```
 
 ### 在 Claude Code 中配置

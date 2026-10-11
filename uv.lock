@@ -3489,7 +3489,7 @@ wheels = [
 ]
 
 [[package]]
-name = "wechat-mcp-server"
+name = "wechat-mcp-xiongwe"
 source = { editable = "." }
 dependencies = [
     { name = "mcp", extra = ["cli"] },
