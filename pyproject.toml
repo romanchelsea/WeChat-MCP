@@ -1,6 +1,6 @@
 [project]
 name = "wechat-mcp-server"
-version = "0.2.0"
+dynamic = ["version"]
 description = "WeChat MCP server for reading and replying to messages via macOS Accessibility APIs"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -45,8 +45,17 @@ wechat-mcp = "wechat_mcp.mcp_server:main"
 dev = ["pytest>=8.0"]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+# The version comes from the latest `vX.Y.Z` git tag; commits after a tag get
+# the next patch plus `.devN`. See docs/releasing.md.
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+# PyPI and TestPyPI reject local versions (`+g<hash>`), so drop that suffix.
+local_scheme = "no-local-version"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/wechat_mcp"]
