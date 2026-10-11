@@ -1,3 +1,5 @@
+"""Manual smoke script: drives the real WeChat app. Not an automated test."""
+
 from __future__ import annotations
 
 from wechat_mcp.mcp_server import add_contact_by_wechat_id

@@ -19,7 +19,10 @@
 - Keep functions small, with clear docstrings explaining interaction with macOS Accessibility APIs.
 
 ## Testing Guidelines
-- No formal automated test suite yet; new tests should use `pytest` under `tests/` mirroring `src/wechat_mcp`.
+- Automated tests use `pytest` under `tests/`, mirroring `src/wechat_mcp`. They replace the
+  Accessibility tree with fake elements and must never drive the real WeChat app.
+- Scripts that do drive the real app (smoke checks that fetch, reply, add a contact or open the
+  Moments composer) live in `scripts/manual/` and are not collected by pytest.
 - Name test files `test_*.py` and test functions `test_*`.
 - Run tests with `uv run pytest`.
 - Avoid hitting real Accessibility APIs in unit tests; isolate them behind helper functions and use fakes where possible.
