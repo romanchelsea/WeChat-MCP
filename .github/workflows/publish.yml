@@ -85,14 +85,14 @@ jobs:
   publish-to-pypi:
     name: Publish to PyPI
     if: |
-      (github.event_name == 'release' && github.event.action == 'published') ||
+      github.event_name == 'release' ||
       (github.event_name == 'workflow_dispatch' && inputs.environment == 'pypi')
     needs:
     - build
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/wechat-mcp-server
+      url: https://pypi.org/p/wechat-mcp-xiongwe
     
     steps:
     - name: Download all the dists
@@ -114,7 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/wechat-mcp-server
+      url: https://test.pypi.org/p/wechat-mcp-xiongwe
     
     steps:
     - name: Download all the dists
@@ -134,8 +134,10 @@ jobs:
     needs:
     - publish-to-pypi
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' && github.event.action == 'published'
-    
+    if: |
+      github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' && inputs.environment == 'pypi')
+
     permissions:
       contents: write
       id-token: write

@@ -24,7 +24,7 @@ Check what a build would produce:
 ```bash
 uv build -o /tmp/dist && ls /tmp/dist
 # or, for the installed project:
-uv run python -c "import importlib.metadata as m; print(m.version('wechat-mcp-server'))"
+uv run python -c "import importlib.metadata as m; print(m.version('wechat-mcp-xiongwe'))"
 ```
 
 ## What bumps what
@@ -46,20 +46,23 @@ version is a breaking change for people who pin it, so it is a minor bump.
 
 ## Cutting a release
 
+[Release Drafter](https://github.com/release-drafter/release-drafter) keeps a
+**draft** GitHub Release up to date on every push to `master`, with notes from
+merged PRs and the next version suggested from PR labels. Labels are applied
+automatically from the Conventional Commit PR title (`feat:` → feature,
+`fix:`/`perf:` → fix, `type!:` → breaking, `docs:`, `chore:`/`ci:`/... →
+maintenance). Squash-merge with the PR title as the commit message so the
+prefix survives. Add the `skip-changelog` label to leave a PR out of the notes.
+
 1. Make sure `master` contains what you want to ship and CI is green.
-2. Choose the next version (see above) and tag that exact commit:
+2. Open **Releases**, review the draft (edit notes or the version if the
+   suggestion is wrong; the tag must be a plain `vMAJOR.MINOR.PATCH`) and
+   click **Publish release**. This creates the tag on `master` and triggers
+   `publish.yml`, which builds, checks the tag, publishes to PyPI and attaches
+   Sigstore signatures to the Release.
 
-   ```bash
-   git tag -a v0.3.0 -m "v0.3.0"
-   git push origin v0.3.0
-   ```
-
-3. Create a GitHub Release from that tag (**Releases → Draft a new
-   release**). Publishing it triggers `publish.yml`, which builds, checks the
-   tag, publishes to PyPI and attaches Sigstore signatures.
-
-To republish from the Actions tab (`workflow_dispatch`, environment `pypi`),
-run it **on the tag**, not on a branch.
+To re-run a failed publish, use **Actions → Publish to PyPI → Run workflow**
+(`workflow_dispatch`, environment `pypi`) on the **tag**, not on a branch.
 
 ## Guards in CI
 

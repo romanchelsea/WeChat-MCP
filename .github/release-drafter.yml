@@ -1,0 +1,51 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+commitish: master
+change-template: '- $TITLE (#$NUMBER) @$AUTHOR'
+change-title-escapes: '\<*_&'
+exclude-labels:
+  - skip-changelog
+
+template: |
+  ## What's changed
+
+  $CHANGES
+
+  **Full changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
+
+categories:
+  - title: 'Breaking changes'
+    labels: ['breaking']
+  - title: 'Features'
+    labels: ['feature']
+  - title: 'Fixes'
+    labels: ['fix']
+  - title: 'Maintenance'
+    labels: ['maintenance', 'docs']
+
+# While the major version is 0, a breaking change is a minor bump
+# (see docs/releasing.md). Change `breaking` to `major` after 1.0.
+version-resolver:
+  minor:
+    labels: ['breaking', 'feature']
+  patch:
+    labels: ['fix', 'maintenance', 'docs']
+  default: patch
+
+# Labels are derived from Conventional Commit PR titles.
+autolabeler:
+  - label: 'breaking'
+    title:
+      - '/^\w+(\(.+\))?!:/'
+  - label: 'feature'
+    title:
+      - '/^feat(\(.+\))?:/i'
+  - label: 'fix'
+    title:
+      - '/^(fix|perf)(\(.+\))?:/i'
+  - label: 'docs'
+    title:
+      - '/^docs(\(.+\))?:/i'
+  - label: 'maintenance'
+    title:
+      - '/^(chore|ci|build|test|refactor|style)(\(.+\))?:/i'
