@@ -3,12 +3,6 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
-  push:
-    branches: [master, main]
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
-      - '.github/ISSUE_TEMPLATE/**'
   workflow_dispatch:
     inputs:
       environment:
@@ -106,9 +100,7 @@ jobs:
 
   publish-to-testpypi:
     name: Publish to TestPyPI
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'workflow_dispatch' && inputs.environment == 'testpypi')
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'testpypi'
     needs:
     - build
     runs-on: ubuntu-latest

@@ -73,7 +73,8 @@ To re-run a failed publish, use **Actions → Publish to PyPI → Run workflow**
   the regular expression if you start publishing pre-releases);
 - the built wheel or sdist version does not match the tag.
 
-Pushes to `master` publish a `.devN` build to TestPyPI only.
+Pushes to `master` do not run `publish.yml`; it runs only when a GitHub Release is
+published (or manually via `workflow_dispatch`, which can also target TestPyPI).
 
 ## Gotchas
 
