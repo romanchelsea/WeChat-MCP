@@ -7,6 +7,7 @@ from typing import Any, Callable
 
 import AppKit
 from ApplicationServices import (
+    AXIsProcessTrusted,
     AXUIElementCreateApplication,
     AXUIElementCopyAttributeValue,
     AXUIElementPerformAction,
@@ -77,6 +78,17 @@ def get_wechat_ax_app() -> Any:
     Get the AX UI element representing the WeChat application and bring
     it to the foreground.
     """
+    # Without Accessibility permission every AX query fails with
+    # kAXErrorAPIDisabled, which would otherwise surface later as a
+    # misleading "could not find <element>" error.
+    if not AXIsProcessTrusted():
+        raise RuntimeError(
+            "This process is not trusted for Accessibility, so WeChat's UI "
+            "cannot be read. Grant Accessibility permission to the app that "
+            "launches the MCP server (e.g. Claude, Terminal) in System "
+            "Settings > Privacy & Security > Accessibility, then restart it."
+        )
+
     bundle_id = "com.tencent.xinWeChat"
     apps = AppKit.NSRunningApplication.runningApplicationsWithBundleIdentifier_(
         bundle_id
