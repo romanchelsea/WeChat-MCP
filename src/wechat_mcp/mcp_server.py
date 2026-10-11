@@ -6,15 +6,13 @@ from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 
-from .logging_config import logger
-from .add_contact_by_wechat_id_utils import (
-    add_contact_by_wechat_id as ax_add_contact_by_wechat_id,
-)
-from .fetch_messages_by_chat_utils import ChatMessage, fetch_recent_messages
-from .publish_moment_utils import publish_moment_without_media as ax_publish_moment
-from .reply_to_messages_by_chat_utils import send_message
-from .wechat_accessibility import get_current_chat_name, open_chat_for_contact
+from .contacts import add_contact_by_wechat_id as ax_add_contact_by_wechat_id
+from .logging_config import configure_logging
+from .messages import ChatMessage, fetch_recent_messages, send_message
+from .moments import publish_moment_without_media as ax_publish_moment
+from .navigation import ensure_chat_open
 
+logger = logging.getLogger(__name__)
 
 mcp = MCPServer("WeChat Helper MCP Server")
 
@@ -35,26 +33,17 @@ def fetch_messages_by_chat(
     """
     try:
         logger.info("Tool fetch_messages_by_chat called for chat=%s", chat_name)
-        current_chat = get_current_chat_name()
-        same_chat = current_chat == chat_name if current_chat is not None else False
-        logger.info(
-            "Current chat title=%r, target=%r, same_chat=%s",
-            current_chat,
-            chat_name,
-            same_chat,
-        )
-        if not same_chat:
-            open_result = open_chat_for_contact(chat_name)
-            if isinstance(open_result, dict) and open_result.get("error"):
-                # No exact match; surface candidates instead of forcing a chat.
-                logger.info(
-                    "open_chat_for_contact returned candidates for chat=%s; "
-                    "skipping message fetch",
-                    chat_name,
-                )
-                enriched = dict(open_result)
-                enriched.setdefault("tool", "fetch_messages_by_chat")
-                return [enriched]
+        not_found = ensure_chat_open(chat_name)
+        if not_found is not None:
+            # No exact match; surface candidates instead of forcing a chat.
+            logger.info(
+                "open_chat_for_contact returned candidates for chat=%s; "
+                "skipping message fetch",
+                chat_name,
+            )
+            enriched = dict(not_found)
+            enriched.setdefault("tool", "fetch_messages_by_chat")
+            return [enriched]
 
         messages: list[ChatMessage] = fetch_recent_messages(last_n=last_n)
         result = [msg.to_dict() for msg in messages]
@@ -96,31 +85,22 @@ def reply_to_messages_by_chat(
         bool(reply_message),
     )
     try:
-        current_chat = get_current_chat_name()
-        same_chat = current_chat == chat_name if current_chat is not None else False
-        logger.info(
-            "Current chat title=%r, target=%r, same_chat=%s",
-            current_chat,
-            chat_name,
-            same_chat,
-        )
-        if not same_chat:
-            open_result = open_chat_for_contact(chat_name)
-            if isinstance(open_result, dict) and open_result.get("error"):
-                logger.info(
-                    "open_chat_for_contact returned candidates for chat=%s; "
-                    "skipping reply send",
-                    chat_name,
-                )
-                enriched: dict[str, Any] = {
-                    "error": open_result.get("error"),
-                    "chat_name": chat_name,
-                    "candidates": open_result.get("candidates", {}),
-                    "reply_message": reply_message,
-                    "sent": False,
-                    "tool": "reply_to_messages_by_chat",
-                }
-                return enriched
+        not_found = ensure_chat_open(chat_name)
+        if not_found is not None:
+            logger.info(
+                "open_chat_for_contact returned candidates for chat=%s; "
+                "skipping reply send",
+                chat_name,
+            )
+            enriched: dict[str, Any] = {
+                "error": not_found.get("error"),
+                "chat_name": chat_name,
+                "candidates": not_found.get("candidates", {}),
+                "reply_message": reply_message,
+                "sent": False,
+                "tool": "reply_to_messages_by_chat",
+            }
+            return enriched
 
         sent = False
         if reply_message is not None and reply_message.strip():
@@ -257,18 +237,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if args.mcp_debug:
-        logging.getLogger("mcp").setLevel(logging.DEBUG)
-        logging.getLogger("anyio").setLevel(logging.DEBUG)
-        logging.getLogger("httpx").setLevel(logging.DEBUG)
-        logger.setLevel(logging.DEBUG)
-
-        debug_formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - "
-            "%(funcName)s:%(lineno)d - %(message)s"
-        )
-        for handler in logging.getLogger().handlers:
-            handler.setFormatter(debug_formatter)
+    configure_logging(debug=args.mcp_debug)
 
     logger.info("Starting WeChat Helper MCP Server")
     logger.info("Transport: %s", args.transport)
