@@ -140,7 +140,7 @@ This project includes 5 intelligent sub-agents designed specifically for WeChat 
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Clone and setup
-git clone https://github.com/yourusername/WeChat-MCP.git
+git clone https://github.com/romanchelsea/WeChat-MCP.git
 cd WeChat-MCP
 uv sync
 

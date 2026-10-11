@@ -140,7 +140,7 @@ wechat-mcp --transport sse
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 克隆并设置
-git clone https://github.com/yourusername/WeChat-MCP.git
+git clone https://github.com/romanchelsea/WeChat-MCP.git
 cd WeChat-MCP
 uv sync
 
