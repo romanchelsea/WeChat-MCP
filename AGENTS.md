@@ -3,8 +3,11 @@
 ## Project Structure & Modules
 - Core code lives in `src/wechat_mcp` (MCP server, accessibility helpers, logging).
 - Entry point is `wechat_mcp.mcp_server:main`, exposed as the `wechat-mcp` script.
-- Logs are written under `logs/` by default (configurable via `WECHAT_MCP_LOG_DIR`).
-- Keep macOS Accessibility and WeChat-specific logic in `wechat_accessibility.py`.
+- Logs are written to `~/Library/Logs/wechat-mcp/` by default (configurable via `WECHAT_MCP_LOG_DIR`).
+  Modules use `logging.getLogger(__name__)`; only `main()` calls `logging_config.configure_logging()`.
+- Modules are layered: generic macOS Accessibility/input helpers in `accessibility.py`, WeChat app and
+  chat navigation in `navigation.py`, and one module per feature area (`messages.py`, `contacts.py`,
+  `moments.py`). New tools go into the matching feature module; `mcp_server.py` stays a thin wrapper.
 
 ## Build, Run & Development
 - Install dependencies: `uv sync` from the repository root.
@@ -19,7 +22,8 @@
 ## Coding Style & Naming
 - Python 3.12+, PEP 8 style, 4-space indentation, type hints where practical.
 - Use `snake_case` for functions/variables, `PascalCase` for classes, and relative imports within `wechat_mcp`.
-- Prefer structured logging via `logging_config.logger`; avoid `print` for runtime behavior.
+- Log via a module-level `logger = logging.getLogger(__name__)`; never `print` (stdout carries the
+  stdio protocol).
 - Keep functions small, with clear docstrings explaining interaction with macOS Accessibility APIs.
 
 ## Testing Guidelines
@@ -35,7 +39,7 @@
 - Follow Conventional Commit style seen in history (e.g., `feat:`, `docs:`, `refactor(scope):`).
 - Keep commits focused and descriptive; explain behavior changes, not just code moves.
 - PRs should include: summary, motivation, how to reproduce/verify, and any macOS/WeChat version specifics.
-- Attach relevant log snippets from `logs/wechat_mcp.log` when debugging Accessibility issues.
+- Attach relevant log snippets from `~/Library/Logs/wechat-mcp/wechat_mcp.log` when debugging Accessibility issues.
 
 ## Versioning & Releases
 - The package version comes from git tags (`vMAJOR.MINOR.PATCH`) via `hatch-vcs`; do not edit a version in

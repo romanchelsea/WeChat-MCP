@@ -1,29 +1,42 @@
+"""
+Reading and sending messages in the currently open WeChat chat.
+"""
+
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import asdict, dataclass
 from typing import Any, Literal
 
 from ApplicationServices import (
+    AXUIElementPerformAction,
+    AXUIElementSetAttributeValue,
     kAXChildrenAttribute,
     kAXListRole,
     kAXPositionAttribute,
+    kAXRaiseAction,
     kAXSizeAttribute,
+    kAXTextAreaRole,
     kAXTitleAttribute,
     kAXValueAttribute,
 )
 from PIL import ImageGrab
 
-from .logging_config import logger
-from .wechat_accessibility import (
+from .accessibility import (
+    KEYCODE_RETURN,
     ax_get,
     axvalue_to_point,
     axvalue_to_size,
-    get_list_center,
-    get_wechat_ax_app,
-    post_scroll,
     dfs,
+    element_center,
+    element_frame,
+    post_scroll,
+    send_key_with_modifiers,
 )
+from .navigation import get_wechat_ax_app
+
+logger = logging.getLogger(__name__)
 
 
 def get_messages_list(ax_app: Any) -> Any:
@@ -45,13 +58,7 @@ def capture_message_area(msg_list: Any):
     Capture a screenshot of the visible message area for the given list and
     return the image together with the list origin and size.
     """
-    pos_ref = ax_get(msg_list, kAXPositionAttribute)
-    size_ref = ax_get(msg_list, kAXSizeAttribute)
-    origin = axvalue_to_point(pos_ref)
-    size = axvalue_to_size(size_ref)
-    if origin is None or size is None:
-        raise RuntimeError("Failed to get bounds for WeChat messages list")
-
+    origin, size = element_frame(msg_list, "WeChat messages list")
     x, y = origin
     w, h = size
 
@@ -212,7 +219,7 @@ def fetch_recent_messages(
     """
     ax_app = get_wechat_ax_app()
     msg_list = get_messages_list(ax_app)
-    center = get_list_center(msg_list)
+    center = element_center(msg_list, "list element")
     scroll_to_bottom(msg_list, center)
 
     messages: list[ChatMessage] = []
@@ -286,3 +293,39 @@ def fetch_recent_messages(
         last_n,
     )
     return messages
+
+
+def find_input_field(ax_app: Any):
+    """
+    Locate the chat input text area in the current WeChat window.
+    """
+
+    def is_input(el, role, title, identifier):
+        return role == kAXTextAreaRole and identifier == "chat_input_field"
+
+    input_field = dfs(ax_app, is_input)
+    if input_field is None:
+        raise RuntimeError(
+            "Could not find WeChat chat input field via Accessibility API"
+        )
+    return input_field
+
+
+def send_message(text: str) -> None:
+    """
+    Send a message in the currently open chat by focusing the input
+    field, setting its value, and pressing Return.
+    """
+    logger.info("Sending message of length %d characters", len(text))
+    ax_app = get_wechat_ax_app()
+    input_field = find_input_field(ax_app)
+
+    AXUIElementPerformAction(input_field, kAXRaiseAction)
+
+    err = AXUIElementSetAttributeValue(input_field, kAXValueAttribute, text)
+    if err != 0:
+        raise RuntimeError(f"Failed to set input text, AX error {err}")
+
+    time.sleep(0.1)
+    send_key_with_modifiers(KEYCODE_RETURN)
+    logger.info("Message sent")

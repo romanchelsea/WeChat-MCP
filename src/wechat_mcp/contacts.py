@@ -1,5 +1,10 @@
+"""
+Adding WeChat contacts by WeChat ID.
+"""
+
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 
@@ -16,18 +21,21 @@ from ApplicationServices import (
     kAXValueAttribute,
 )
 
-from .logging_config import logger
-from .wechat_accessibility import (
-    _wait_for_window,
-    _collect_search_entries,
+from .accessibility import (
     ax_get,
     axvalue_to_point,
     click_element_center,
     dfs,
+    wait_for_window,
+)
+from .navigation import (
+    collect_search_entries,
     focus_and_type_search,
     get_search_list,
     get_wechat_ax_app,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _click_more_card_by_title(ax_app: Any, label: str) -> bool:
@@ -35,11 +43,11 @@ def _click_more_card_by_title(ax_app: Any, label: str) -> bool:
     Click a card with the given label in the global search results list.
 
     This reuses the same search-entry collection logic as
-    _select_contact_from_search_results but targets entries by their
+    navigation._select_contact_from_search_results but targets entries by their
     visible text only (e.g. a card labeled "Search WeChat ID").
     """
     search_list = get_search_list(ax_app)
-    entries = _collect_search_entries(search_list)
+    entries = collect_search_entries(search_list)
 
     target = label.strip()
     for entry in entries:
@@ -305,7 +313,7 @@ def add_contact_by_wechat_id(
             }
 
         # Step 3a: Add Contacts window
-        add_window = _wait_for_window(ax_app, "Add Contacts", timeout=5.0)
+        add_window = wait_for_window(ax_app, "Add Contacts", timeout=5.0)
         if add_window is None:
             error_msg = (
                 "The 'Add Contacts' window did not appear after selecting "
@@ -331,7 +339,7 @@ def add_contact_by_wechat_id(
             }
 
         # Step 4: Send Friend Request window
-        request_window = _wait_for_window(ax_app, "Send Friend Request", timeout=5.0)
+        request_window = wait_for_window(ax_app, "Send Friend Request", timeout=5.0)
         if request_window is None:
             error_msg = (
                 "The 'Send Friend Request' window did not appear after "

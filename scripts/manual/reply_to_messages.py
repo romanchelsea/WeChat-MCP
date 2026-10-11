@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from wechat_mcp.logging_config import configure_logging
 from wechat_mcp.mcp_server import reply_to_messages_by_chat
 
 
 def main() -> None:
+    configure_logging()
     print(reply_to_messages_by_chat("邦邦", "Hello from tests"))
 
 

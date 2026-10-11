@@ -1,76 +1,54 @@
+"""
+WeChat-specific navigation on top of the generic Accessibility helpers.
+
+Covers activating the WeChat app, reading the current chat title, the
+sidebar session list, and the global search box/results used to open a
+chat by name.
+"""
+
 from __future__ import annotations
 
+import logging
 import re
 import time
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 import AppKit
 from ApplicationServices import (
     AXIsProcessTrusted,
     AXUIElementCreateApplication,
-    AXUIElementCopyAttributeValue,
     AXUIElementPerformAction,
     AXUIElementSetAttributeValue,
-    AXValueGetType,
-    AXValueGetValue,
     kAXChildrenAttribute,
     kAXIdentifierAttribute,
     kAXListRole,
     kAXPositionAttribute,
     kAXRaiseAction,
     kAXRoleAttribute,
-    kAXSizeAttribute,
     kAXStaticTextRole,
     kAXTextAreaRole,
     kAXTitleAttribute,
     kAXValueAttribute,
-    kAXValueCGPointType,
-    kAXValueCGSizeType,
-    kAXWindowRole,
 )
-from Quartz import (
-    CGEventCreateKeyboardEvent,
-    CGEventCreateMouseEvent,
-    CGEventCreateScrollWheelEvent,
-    CGEventPost,
-    CGEventSetFlags,
-    CGEventSetLocation,
-    CGPoint,
-    kCGEventFlagMaskCommand,
-    kCGEventLeftMouseDown,
-    kCGEventLeftMouseUp,
-    kCGHIDEventTap,
-    kCGScrollEventUnitLine,
+from Quartz import kCGEventFlagMaskCommand
+
+from .accessibility import (
+    KEYCODE_A,
+    KEYCODE_V,
+    ax_get,
+    axvalue_to_point,
+    click_element_center,
+    dfs,
+    element_center,
+    post_scroll,
+    send_key_with_modifiers,
 )
 
-from .logging_config import logger
+logger = logging.getLogger(__name__)
 
 
-def ax_get(element, attribute):
-    err, value = AXUIElementCopyAttributeValue(element, attribute, None)
-    if err != 0:
-        return None
-    return value
 
-
-def dfs(element, predicate: Callable[[Any, Any, Any, Any], bool]):
-    if element is None:
-        return None
-
-    role = ax_get(element, kAXRoleAttribute)
-    title = ax_get(element, kAXTitleAttribute)
-    identifier = ax_get(element, kAXIdentifierAttribute)
-
-    if predicate(element, role, title, identifier):
-        return element
-
-    children = ax_get(element, kAXChildrenAttribute) or []
-    for child in children:
-        found = dfs(child, predicate)
-        if found is not None:
-            return found
-    return None
 
 
 def get_wechat_ax_app() -> Any:
@@ -102,37 +80,6 @@ def get_wechat_ax_app() -> Any:
         "Activated WeChat (bundle_id=%s, pid=%s)", bundle_id, app.processIdentifier()
     )
     return AXUIElementCreateApplication(app.processIdentifier())
-
-
-def _find_window_by_title(ax_app: Any, title: str):
-    """
-    Locate a top-level WeChat window with the given title.
-    """
-
-    def is_window(el, role, current_title, identifier):
-        return (
-            role == kAXWindowRole
-            and isinstance(current_title, str)
-            and current_title == title
-        )
-
-    return dfs(ax_app, is_window)
-
-
-def _wait_for_window(ax_app: Any, title: str, timeout: float = 5.0):
-    """
-    Wait for a window with the given title to appear, returning the AX
-    element or None if the timeout expires.
-    """
-    end = time.time() + timeout
-    while time.time() < end:
-        window = _find_window_by_title(ax_app, title)
-        if window is not None:
-            logger.info("Found window %r", title)
-            return window
-        time.sleep(0.1)
-    logger.warning("Timed out waiting for window %r", title)
-    return None
 
 
 def _normalize_chat_title(name: str) -> str:
@@ -214,69 +161,6 @@ def find_chat_element_by_name(ax_app, chat_name: str):
     return None
 
 
-def send_key_with_modifiers(keycode: int, flags: int):
-    event_down = CGEventCreateKeyboardEvent(None, keycode, True)
-    CGEventSetFlags(event_down, flags)
-    event_up = CGEventCreateKeyboardEvent(None, keycode, False)
-    CGEventSetFlags(event_up, flags)
-    CGEventPost(kCGHIDEventTap, event_down)
-    CGEventPost(kCGHIDEventTap, event_up)
-
-
-def click_element_center(element) -> None:
-    """
-    Synthesize a left mouse click at the visual center of the element.
-    """
-    pos_ref = ax_get(element, kAXPositionAttribute)
-    size_ref = ax_get(element, kAXSizeAttribute)
-    point = axvalue_to_point(pos_ref)
-    size = axvalue_to_size(size_ref)
-    if point is None or size is None:
-        raise RuntimeError("Failed to get bounds for element to click")
-
-    x, y = point
-    w, h = size
-    cx = x + w / 2.0
-    cy = y + h / 2.0
-
-    event_down = CGEventCreateMouseEvent(
-        None, kCGEventLeftMouseDown, CGPoint(cx, cy), 0
-    )
-    event_up = CGEventCreateMouseEvent(None, kCGEventLeftMouseUp, CGPoint(cx, cy), 0)
-    CGEventPost(kCGHIDEventTap, event_down)
-    CGEventPost(kCGHIDEventTap, event_up)
-
-
-def long_press_element_center(element, hold_seconds: float = 2.2) -> None:
-    """
-    Synthesize a long left mouse press at the visual center of the
-    given element.
-    """
-    pos_ref = ax_get(element, kAXPositionAttribute)
-    size_ref = ax_get(element, kAXSizeAttribute)
-    point = axvalue_to_point(pos_ref)
-    size = axvalue_to_size(size_ref)
-    if point is None or size is None:
-        raise RuntimeError("Failed to get bounds for element to long-press")
-
-    x, y = point
-    w, h = size
-    cx = x + w / 2.0
-    cy = y + h / 2.0
-
-    event_down = CGEventCreateMouseEvent(
-        None, kCGEventLeftMouseDown, CGPoint(cx, cy), 0
-    )
-    CGEventPost(kCGHIDEventTap, event_down)
-    try:
-        time.sleep(max(0.0, hold_seconds))
-    finally:
-        event_up = CGEventCreateMouseEvent(
-            None, kCGEventLeftMouseUp, CGPoint(cx, cy), 0
-        )
-        CGEventPost(kCGHIDEventTap, event_up)
-
-
 def find_search_field(ax_app):
     def is_search(el, role, title, identifier):
         return role == kAXTextAreaRole and title == "Search"
@@ -309,11 +193,9 @@ def focus_and_type_search(ax_app, text: str):
 
     time.sleep(0.1)
 
-    keycode_a = 0  # US keyboard 'A'
-    keycode_v = 9  # US keyboard 'V'
-    send_key_with_modifiers(keycode_a, kCGEventFlagMaskCommand)
+    send_key_with_modifiers(KEYCODE_A, kCGEventFlagMaskCommand)
     time.sleep(0.05)
-    send_key_with_modifiers(keycode_v, kCGEventFlagMaskCommand)
+    send_key_with_modifiers(KEYCODE_V, kCGEventFlagMaskCommand)
 
 
 def open_chat_for_contact(chat_name: str) -> dict[str, Any] | None:
@@ -395,6 +277,32 @@ def open_chat_for_contact(chat_name: str) -> dict[str, Any] | None:
         raise
 
 
+def ensure_chat_open(chat_name: str) -> dict[str, Any] | None:
+    """
+    Make sure the chat with the given name is the one currently open.
+
+    Does nothing if it already is. Otherwise opens it via
+    open_chat_for_contact. Returns None once the chat is open, or the
+    {"error", "chat_name", "candidates"} dict from open_chat_for_contact
+    when no exact match was found.
+    """
+    current_chat = get_current_chat_name()
+    same_chat = current_chat == chat_name if current_chat is not None else False
+    logger.info(
+        "Current chat title=%r, target=%r, same_chat=%s",
+        current_chat,
+        chat_name,
+        same_chat,
+    )
+    if same_chat:
+        return None
+
+    open_result = open_chat_for_contact(chat_name)
+    if isinstance(open_result, dict) and open_result.get("error"):
+        return open_result
+    return None
+
+
 def get_search_list(ax_app):
     """
     Return the AX list that contains global search results in the
@@ -419,7 +327,7 @@ class SearchEntry:
     y: float
 
 
-def _collect_search_entries(search_list) -> list[SearchEntry]:
+def collect_search_entries(search_list) -> list[SearchEntry]:
     """
     Collect visible static-text entries from the search results list,
     including section headers, result cards and "View All"/"Collapse"
@@ -566,7 +474,7 @@ def _expand_section_if_needed(search_list, section_title: str) -> None:
     If a "View All(...)" row exists for the given section title
     ("Contacts" or "Group Chats"), click its center to expand that section.
     """
-    entries = _collect_search_entries(search_list)
+    entries = collect_search_entries(search_list)
     headers = _build_section_headers(entries)
     if section_title not in headers:
         return
@@ -601,7 +509,7 @@ def _select_contact_from_search_results(
         aggregated_groups.update(partial["group_chats"])
 
     # First, inspect the initial compact search popover without scrolling.
-    entries = _collect_search_entries(search_list)
+    entries = collect_search_entries(search_list)
     update_candidates(entries)
     element = _find_exact_match_in_entries(entries, contact_name)
     if element is not None:
@@ -616,7 +524,7 @@ def _select_contact_from_search_results(
     _expand_section_if_needed(search_list, "Contacts")
     _expand_section_if_needed(search_list, "Group Chats")
 
-    center = get_list_center(search_list)
+    center = element_center(search_list, "list element")
     last_bottom_text = None
     stable = 0
 
@@ -624,7 +532,7 @@ def _select_contact_from_search_results(
     # exact match under Contacts/Group Chats, while aggregating
     # candidate names from Contacts and Group Chats.
     for _ in range(80):
-        entries = _collect_search_entries(search_list)
+        entries = collect_search_entries(search_list)
         update_candidates(entries)
 
         element = _find_exact_match_in_entries(entries, contact_name)
@@ -666,52 +574,3 @@ def _select_contact_from_search_results(
         "contacts": list(aggregated_contacts)[:15],
         "group_chats": list(aggregated_groups)[:15],
     }
-
-
-def axvalue_to_point(ax_value):
-    if ax_value is None or AXValueGetType(ax_value) != kAXValueCGPointType:
-        return None
-    ok, cg_point = AXValueGetValue(ax_value, kAXValueCGPointType, None)
-    if not ok:
-        return None
-    return float(cg_point.x), float(cg_point.y)
-
-
-def axvalue_to_size(ax_value):
-    if ax_value is None or AXValueGetType(ax_value) != kAXValueCGSizeType:
-        return None
-    ok, cg_size = AXValueGetValue(ax_value, kAXValueCGSizeType, None)
-    if not ok:
-        return None
-    return float(cg_size.width), float(cg_size.height)
-
-
-def get_list_center(msg_list):
-    """
-    Compute the on-screen center point of the messages (or search) list,
-    used as the target for scroll-wheel events.
-    """
-    pos_ref = ax_get(msg_list, kAXPositionAttribute)
-    size_ref = ax_get(msg_list, kAXSizeAttribute)
-    origin = axvalue_to_point(pos_ref)
-    size = axvalue_to_size(size_ref)
-    if origin is None or size is None:
-        raise RuntimeError("Failed to get bounds for list element")
-
-    x, y = origin
-    w, h = size
-    return x + w / 2.0, y + h / 2.0
-
-
-def post_scroll(center, delta_lines: int) -> None:
-    """
-    Post a scroll-wheel event at the given screen position.
-
-    On a standard macOS configuration:
-    - Positive delta_lines scrolls towards older content (upwards in history).
-    - Negative delta_lines scrolls towards newer content (downwards in history).
-    """
-    cx, cy = center
-    event = CGEventCreateScrollWheelEvent(None, kCGScrollEventUnitLine, 1, delta_lines)
-    CGEventSetLocation(event, CGPoint(cx, cy))
-    CGEventPost(kCGHIDEventTap, event)

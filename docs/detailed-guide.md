@@ -84,28 +84,30 @@ The main MCP server implementation that:
 - Handles multiple transport types (stdio, streamable-http, sse)
 - Provides the main entry point via the `main()` function
 
-#### `src/wechat_mcp/wechat_accessibility.py`
+The modules are layered: `accessibility` knows nothing about WeChat, `navigation` moves around WeChat on top of it, and `messages`, `contacts` and `moments` each implement one feature area.
 
-Holds the shared, low-level Accessibility helpers and WeChat UI navigation that are reused by all three tools:
+#### `src/wechat_mcp/accessibility.py`
 
-**Low-level Accessibility API helpers:**
+Generic macOS Accessibility and synthetic input helpers, with no WeChat knowledge:
 
 - `ax_get(element, attribute)` - Get accessibility element attributes
 - `dfs(element, predicate)` - Depth-first search in accessibility tree
-- `click_element_center(element)` - Synthesize mouse click
-- `send_key_with_modifiers(keycode, flags)` - Keyboard input simulation
 - `axvalue_to_point(ax_value)` / `axvalue_to_size(ax_value)` - Convert AXValue wrappers into Python tuples
-- `get_list_center(msg_list)` / `post_scroll(center, delta_lines)` - Compute list center and send scroll-wheel events
+- `element_frame(element, description)` / `element_center(element, description)` - On-screen bounds and center point of an element
+- `click_element_center(element)` / `long_press_element_center(element, hold_seconds)` - Click or long‑press the visual center of an AX element
+- `send_key_with_modifiers(keycode, flags)` - Keyboard input simulation (`KEYCODE_A`, `KEYCODE_V`, `KEYCODE_RETURN` constants)
+- `post_scroll(center, delta_lines)` - Send scroll-wheel events
+- `find_window_by_title(ax_app, title)` / `wait_for_window(ax_app, title)` - Locate and wait for top‑level windows such as `"Add Contacts"`, `"Send Friend Request"`, or `"Moments"`
 
-**WeChat app interaction:**
+#### `src/wechat_mcp/navigation.py`
+
+WeChat app interaction, chat navigation and global search, shared by all tools:
 
 - `get_wechat_ax_app()` - Get/activate WeChat application
 - `get_current_chat_name()` - Get title of currently open chat
 - `_normalize_chat_title(name)` - Strip group member count suffix like "(23)"
-
-**Chat navigation & global search:**
-
 - `collect_chat_elements(ax_app)` / `find_chat_element_by_name(ax_app, chat_name)` - Enumerate and resolve chats in the left session list
+- `ensure_chat_open(chat_name)` - Open the chat unless it is already the current one; returns the error + candidates dict when no exact match exists
 - `open_chat_for_contact(chat_name)` - Open chat with smart fallback behavior:
   1. First tries sidebar session list
   2. If not found, uses global search with preference for exact matches
@@ -114,42 +116,16 @@ Holds the shared, low-level Accessibility helpers and WeChat UI navigation that 
   5. Returns error + candidates list if no exact match found
 - `find_search_field(ax_app)` / `focus_and_type_search(ax_app, text)` - Locate WeChat search input and type into it via clipboard + keyboard
 - `get_search_list(ax_app)` - Find search results list
-- `SearchEntry` + `_collect_search_entries(search_list)` - Collect visible rows (section headers, cards, “View All”) with Y positions
+- `SearchEntry` + `collect_search_entries(search_list)` - Collect visible rows (section headers, cards, “View All”) with Y positions
 - `_build_section_headers(entries)` / `_classify_section(entry, headers)` - Map entries into "Contacts", "Group Chats", etc.
 - `_find_exact_match_in_entries(entries, contact_name)` - Prefer exact contact/group matches
 - `_summarize_search_candidates(entries)` - Extract up to 15 contact + group names
 - `_expand_section_if_needed(search_list, section_title)` - Click "View All"
 - `_select_contact_from_search_results(ax_app, contact_name)` - Smart search with scrolling that ignores non‑contact sections
-- `_find_window_by_title(ax_app, title)` / `_wait_for_window(ax_app, title)` - Locate and wait for top‑level WeChat windows such as `"Add Contacts"`, `"Send Friend Request"`, or `"Moments"`
-- `click_element_center(element)` / `long_press_element_center(element, hold_seconds)` - Click or long‑press the visual center of an AX element
 
-#### `src/wechat_mcp/add_contact_by_wechat_id_utils.py`
+#### `src/wechat_mcp/messages.py`
 
-Implements the Accessibility flow for adding contacts by WeChat ID:
-
-- `add_contact_by_wechat_id(wechat_id, friending_msg, remark, tags, privacy, hide_my_posts, hide_their_posts)` - Drive the full "Search WeChat ID" → "Add Contacts" → "Send Friend Request" flow.
-- Helper functions:
-  - `_click_more_card_by_title(ax_app, label)` - Click a search result card by its visible label (e.g. `"Search WeChat ID"`)
-  - `_click_add_to_contacts_button(add_contacts_window)` - Press `"Add to Contacts"` in the "Add Contacts" window
-  - `_set_checkbox_state(checkbox, desired)` / `_set_checkbox_by_title(window, title, desired)` - Toggle post‑visibility checkboxes
-  - `_click_privacy_option(window, label)` - Select `"Chats, Moments, WeRun, etc."` vs `"Chats Only"`
-  - `_configure_friend_request_window(...)` - Apply friending message, remark, privacy, and post‑visibility settings in the `"Send Friend Request"` window
-
-#### `src/wechat_mcp/publish_moment_utils.py`
-
-Implements the Accessibility flow for publishing a Moments post without media:
-
-- `publish_moment_without_media(content, publish=True)` - Drive the full `"WeChat" main window` → `"Moments"` window → long‑press `"Post"` → composer sheet → `"Post"` flow for text‑only Moments. When `publish=False`, the composer is filled but the final `"Post"` button is not clicked, leaving the sheet open.
-- Helper functions:
-  - `_open_moments_window(ax_app, timeout)` - Click the `"Moments"` button and wait for the `"Moments"` window
-  - `_open_moment_composer(moments_window)` - Long‑press the `"Post"` button to reveal the composer sheet
-  - `_find_editor_root(moments_window, timeout)` - Prefer the AXSheet composer root, fallback to the `"Moments"` window
-  - `_find_moment_text_area(root)` - Locate the text entry area inside the composer
-  - `_find_post_button_in_editor(root)` - Find the `"Post"` button inside the composer editor root
-
-#### `src/wechat_mcp/fetch_messages_by_chat_utils.py`
-
-Holds the message-list specific logic used by `fetch_messages_by_chat`:
+Reading and sending messages in the currently open chat, used by `fetch_messages_by_chat` and `reply_to_messages_by_chat`:
 
 **Message fetching:**
 
@@ -172,32 +148,51 @@ Holds the message-list specific logic used by `fetch_messages_by_chat`:
 - `count_colored_pixels(image, left, top, right, bottom)` - Image processing helper
 - `classify_sender_for_message(image, list_origin, message_pos, message_size)` - Pixel-based heuristic used by `fetch_recent_messages`
 
-#### `src/wechat_mcp/reply_to_messages_by_chat_utils.py`
+**Sending:**
 
-Contains the helpers used by `reply_to_messages_by_chat` for sending messages:
-
-- `send_message(text)` - Send a message via Accessibility API
+- `send_message(text)` - Set the input field's value and press Return
 - `find_input_field(ax_app)` - Locate chat input field
-- `press_return()` - Synthesize Return key press
+
+#### `src/wechat_mcp/contacts.py`
+
+Implements the Accessibility flow for adding contacts by WeChat ID:
+
+- `add_contact_by_wechat_id(wechat_id, friending_msg, remark, tags, privacy, hide_my_posts, hide_their_posts)` - Drive the full "Search WeChat ID" → "Add Contacts" → "Send Friend Request" flow.
+- Helper functions:
+  - `_click_more_card_by_title(ax_app, label)` - Click a search result card by its visible label (e.g. `"Search WeChat ID"`)
+  - `_click_add_to_contacts_button(add_contacts_window)` - Press `"Add to Contacts"` in the "Add Contacts" window
+  - `_set_checkbox_state(checkbox, desired)` / `_set_checkbox_by_title(window, title, desired)` - Toggle post‑visibility checkboxes
+  - `_click_privacy_option(window, label)` - Select `"Chats, Moments, WeRun, etc."` vs `"Chats Only"`
+  - `_configure_friend_request_window(...)` - Apply friending message, remark, privacy, and post‑visibility settings in the `"Send Friend Request"` window
+
+#### `src/wechat_mcp/moments.py`
+
+Implements the Accessibility flow for publishing a Moments post without media:
+
+- `publish_moment_without_media(content, publish=True)` - Drive the full `"WeChat" main window` → `"Moments"` window → long‑press `"Post"` → composer sheet → `"Post"` flow for text‑only Moments. When `publish=False`, the composer is filled but the final `"Post"` button is not clicked, leaving the sheet open.
+- Helper functions:
+  - `_open_moments_window(ax_app, timeout)` - Click the `"Moments"` button and wait for the `"Moments"` window
+  - `_open_moment_composer(moments_window)` - Long‑press the `"Post"` button to reveal the composer sheet
+  - `_find_editor_root(moments_window, timeout)` - Prefer the AXSheet composer root, fallback to the `"Moments"` window
+  - `_find_moment_text_area(root)` - Locate the text entry area inside the composer
+  - `_find_post_button_in_editor(root)` - Find the `"Post"` button inside the composer editor root
 
 #### `src/wechat_mcp/logging_config.py`
 
-Configures dual logging:
-
-- File handler: writes to `logs/wechat_mcp.log` (DEBUG level)
-- Console handler: writes to stdout (INFO level)
-- Customizable via `WECHAT_MCP_LOG_DIR` environment variable
+- `configure_logging(debug=False)` - Called once from `main()`; modules only use `logging.getLogger(__name__)`
+- Console handler: writes to stderr (INFO level, DEBUG with `--mcp-debug`); stdout is reserved for the stdio transport
+- File handler: rotating `wechat_mcp.log` (DEBUG level, 5 MB × 3 backups)
+- Replaces the root handler the MCP SDK installs, so each record is printed once
 
 ## Logging
 
-The project has a comprehensive logging setup:
-
-- Logs are written to a file under the `logs/` directory (by default `logs/wechat_mcp.log`)
-- Logs are also sent to the terminal (stdout)
+- Logs go to stderr and to `~/Library/Logs/wechat-mcp/wechat_mcp.log` (also visible in Console.app)
+- The file rotates at 5 MB and keeps 3 backups
+- If the log file cannot be opened, the server logs a warning and continues with stderr only
 
 You can customize the log directory via:
 
-- `WECHAT_MCP_LOG_DIR` – directory path where `.log` files should be stored (defaults to `logs` under the current working directory)
+- `WECHAT_MCP_LOG_DIR` – directory path where `.log` files should be stored (e.g. `WECHAT_MCP_LOG_DIR=logs` to log under the current working directory while developing)
 
 ## macOS and Accessibility requirements
 

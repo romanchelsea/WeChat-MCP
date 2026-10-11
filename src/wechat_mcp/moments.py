@@ -1,5 +1,10 @@
+"""
+Publishing WeChat Moments posts.
+"""
+
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 
@@ -17,15 +22,16 @@ from ApplicationServices import (
     kAXWindowsAttribute,
 )
 
-from .logging_config import logger
-from .wechat_accessibility import (
-    _find_window_by_title,
+from .accessibility import (
     ax_get,
     click_element_center,
     dfs,
-    get_wechat_ax_app,
+    find_window_by_title,
     long_press_element_center,
 )
+from .navigation import get_wechat_ax_app
+
+logger = logging.getLogger(__name__)
 
 _MAIN_WINDOW_TITLES = ("WeChat", "Weixin", "微信")
 
@@ -47,7 +53,7 @@ def _open_moments_window(ax_app: Any, timeout: float = 5.0) -> Any:
     # "Weixin"/"微信" (mainland), and the main window title follows suit.
     main_window = None
     for window_title in _MAIN_WINDOW_TITLES:
-        main_window = _find_window_by_title(ax_app, window_title)
+        main_window = find_window_by_title(ax_app, window_title)
         if main_window is not None:
             break
     if main_window is None:
@@ -107,7 +113,7 @@ def _find_moments_window(ax_app: Any) -> Any | None:
     'Post' and a 'Refresh' button, preferring windows that are not the
     main one.
     """
-    window = _find_window_by_title(ax_app, "Moments")
+    window = find_window_by_title(ax_app, "Moments")
     if window is not None:
         return window
 
