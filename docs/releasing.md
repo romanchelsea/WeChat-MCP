@@ -61,8 +61,8 @@ prefix survives. Add the `skip-changelog` label to leave a PR out of the notes.
    `publish.yml`, which builds, checks the tag, publishes to PyPI and attaches
    Sigstore signatures to the Release.
 
-To re-run a failed publish, use **Actions → Publish to PyPI → Run workflow**
-(`workflow_dispatch`, environment `pypi`) on the **tag**, not on a branch.
+To retry a failed publish, open the failed run under **Actions → Publish to
+PyPI** and use **Re-run failed jobs**; it reuses the release event and tag.
 
 ## Guards in CI
 
@@ -73,8 +73,13 @@ To re-run a failed publish, use **Actions → Publish to PyPI → Run workflow**
   the regular expression if you start publishing pre-releases);
 - the built wheel or sdist version does not match the tag.
 
-Pushes to `master` do not run `publish.yml`; it runs only when a GitHub Release is
-published (or manually via `workflow_dispatch`, which can also target TestPyPI).
+`publish.yml` runs in two cases only:
+
+- a GitHub Release is **published**: build, checks, publish to **PyPI**, sign;
+- **Run workflow** from the Actions tab (`workflow_dispatch`): build and
+  publish to **TestPyPI** only, never PyPI.
+
+Pushes to `master` do not run it.
 
 ## Gotchas
 
