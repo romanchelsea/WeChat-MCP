@@ -1,0 +1,44 @@
+# git-cliff config: builds the draft release notes from Conventional Commits.
+# Used by .github/workflows/release-draft.yml. See docs/releasing.md.
+
+[changelog]
+header = ""
+body = """
+## What's changed
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+{% for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}\
+  {{ commit.message | split(pat="\n") | first | trim | upper_first }} ({{ commit.id | truncate(length=7, end="") }})\
+  {% if commit.breaking %} **BREAKING**{% endif %}
+{%- endfor %}
+{% endfor %}
+"""
+footer = ""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = false
+split_commits = false
+protect_breaking_commits = true
+filter_commits = false
+tag_pattern = "v[0-9]*"
+sort_commits = "oldest"
+commit_parsers = [
+  { message = "^chore\\(release\\)", skip = true },
+  { message = "^feat", group = "Features" },
+  { message = "^fix", group = "Fixes" },
+  { message = "^perf", group = "Fixes" },
+  { message = "^docs", group = "Docs" },
+  { message = "^(chore|ci|build|test|refactor|style)", group = "Maintenance" },
+  { message = ".*", group = "Other" },
+]
+
+# While the major version is 0, a breaking change is a minor bump and
+# everything else a patch bump (see docs/releasing.md). With both flags
+# false that is git-cliff's default behaviour for 0.y.z.
+[bump]
+features_always_bump_minor = false
+breaking_always_bump_major = false
+initial_tag = "v0.1.0"

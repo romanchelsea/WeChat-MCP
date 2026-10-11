@@ -46,13 +46,15 @@ version is a breaking change for people who pin it, so it is a minor bump.
 
 ## Cutting a release
 
-[Release Drafter](https://github.com/release-drafter/release-drafter) keeps a
-**draft** GitHub Release up to date on every push to `master`, with notes from
-merged PRs and the next version suggested from PR labels. Labels are applied
-automatically from the Conventional Commit PR title (`feat:` → feature,
-`fix:`/`perf:` → fix, `type!:` → breaking, `docs:`, `chore:`/`ci:`/... →
-maintenance). Squash-merge with the PR title as the commit message so the
-prefix survives. Add the `skip-changelog` label to leave a PR out of the notes.
+`release-draft.yml` keeps one **draft** GitHub Release up to date on every push
+to `master`. [git-cliff](https://git-cliff.org) (config: `cliff.toml`) builds
+the notes from the Conventional Commit messages since the latest `v*` tag
+(grouped as Features / Fixes / Docs / Maintenance / Other) and suggests the
+next version from the same prefixes: a breaking change (`type!:` or a
+`BREAKING CHANGE:` footer) bumps minor while the major version is `0`,
+everything else bumps patch. No pull requests are needed; direct pushes are
+fine. Preview locally with `uvx git-cliff --unreleased --bump` and
+`uvx git-cliff --bumped-version`.
 
 1. Make sure `master` contains what you want to ship and CI is green.
 2. Open **Releases**, review the draft (edit notes or the version if the
