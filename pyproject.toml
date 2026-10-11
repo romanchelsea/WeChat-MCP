@@ -33,10 +33,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/BiboyQG/WeChat-MCP"
-Repository = "https://github.com/BiboyQG/WeChat-MCP.git"
-Issues = "https://github.com/BiboyQG/WeChat-MCP/issues"
-Documentation = "https://github.com/BiboyQG/WeChat-MCP#readme"
+Homepage = "https://github.com/romanchelsea/WeChat-MCP"
+Repository = "https://github.com/romanchelsea/WeChat-MCP.git"
+Issues = "https://github.com/romanchelsea/WeChat-MCP/issues"
+Documentation = "https://github.com/romanchelsea/WeChat-MCP#readme"
 
 [project.scripts]
 wechat-mcp = "wechat_mcp.mcp_server:main"
