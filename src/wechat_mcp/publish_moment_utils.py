@@ -7,49 +7,128 @@ from ApplicationServices import (
     AXUIElementPerformAction,
     AXUIElementSetAttributeValue,
     kAXButtonRole,
+    kAXChildrenAttribute,
+    kAXPressAction,
     kAXRaiseAction,
     kAXSheetRole,
     kAXTextAreaRole,
+    kAXTitleAttribute,
     kAXValueAttribute,
+    kAXWindowsAttribute,
 )
 
 from .logging_config import logger
 from .wechat_accessibility import (
     _find_window_by_title,
-    _wait_for_window,
+    ax_get,
     click_element_center,
     dfs,
     get_wechat_ax_app,
     long_press_element_center,
 )
 
+_MAIN_WINDOW_TITLES = ("WeChat", "Weixin", "微信")
+
 
 def _open_moments_window(ax_app: Any, timeout: float = 5.0) -> Any:
     """
-    Ensure the WeChat Moments window is open by clicking the Moments
-    button in the main WeChat window and waiting for the Moments window
-    to appear.
+    Ensure the WeChat Moments window is open and return it.
+
+    Depending on the build/layout, Moments is reachable either through a
+    sidebar button in the main window or only through the Window menu
+    (the sidebar then exposes a "Discover" entry instead). If it is
+    already open it is reused, since pressing again may toggle it away.
     """
-    main_window = _find_window_by_title(ax_app, "WeChat")
+    existing = _find_moments_window(ax_app)
+    if existing is not None:
+        return existing
+
+    # The same macOS client is branded "WeChat" (international) or
+    # "Weixin"/"微信" (mainland), and the main window title follows suit.
+    main_window = None
+    for window_title in _MAIN_WINDOW_TITLES:
+        main_window = _find_window_by_title(ax_app, window_title)
+        if main_window is not None:
+            break
     if main_window is None:
-        raise RuntimeError("Could not find main WeChat window with title 'WeChat'")
+        raise RuntimeError(
+            "Could not find main WeChat window with any of the titles "
+            f"{list(_MAIN_WINDOW_TITLES)}"
+        )
 
     def is_moments_button(el, role, title, identifier):
         return role == kAXButtonRole and isinstance(title, str) and title == "Moments"
 
     button = dfs(main_window, is_moments_button)
-    if button is None:
-        raise RuntimeError("Could not find 'Moments' button in WeChat main window")
+    if button is not None:
+        logger.info("Pressing 'Moments' button in main window")
+        # Prefer the AX press action over a synthesized mouse click.
+        if AXUIElementPerformAction(button, kAXPressAction) != 0:
+            click_element_center(button)
+    elif not _press_window_menu_item(ax_app, "Moments"):
+        raise RuntimeError(
+            "Could not find a 'Moments' button in the main window nor a "
+            "'Moments' item in the Window menu"
+        )
 
-    logger.info("Clicking 'Moments' button in main window")
-    click_element_center(button)
-    time.sleep(0.4)
+    end = time.time() + timeout
+    while time.time() < end:
+        moments_window = _find_moments_window(ax_app)
+        if moments_window is not None:
+            return moments_window
+        time.sleep(0.1)
 
-    moments_window = _wait_for_window(ax_app, "Moments", timeout=timeout)
-    if moments_window is None:
-        raise RuntimeError("The 'Moments' window did not appear after clicking")
+    raise RuntimeError("The 'Moments' window did not appear after opening it")
 
-    return moments_window
+
+def _press_window_menu_item(ax_app: Any, item_title: str) -> bool:
+    """
+    Press an item of the app's "Window" menu by title. Returns whether the
+    item was found and pressed.
+    """
+    menu_bar = ax_get(ax_app, "AXMenuBar")
+    for bar_item in ax_get(menu_bar, kAXChildrenAttribute) or []:
+        if ax_get(bar_item, kAXTitleAttribute) != "Window":
+            continue
+        for menu in ax_get(bar_item, kAXChildrenAttribute) or []:
+            for entry in ax_get(menu, kAXChildrenAttribute) or []:
+                if ax_get(entry, kAXTitleAttribute) == item_title:
+                    logger.info("Pressing Window > %s menu item", item_title)
+                    return AXUIElementPerformAction(entry, kAXPressAction) == 0
+    return False
+
+
+def _find_moments_window(ax_app: Any) -> Any | None:
+    """
+    Locate the window currently showing Moments.
+
+    Its title varies by build ("Moments", a generic "WeChat (Window)", or
+    the main window itself), so fall back to the window that has both a
+    'Post' and a 'Refresh' button, preferring windows that are not the
+    main one.
+    """
+    window = _find_window_by_title(ax_app, "Moments")
+    if window is not None:
+        return window
+
+    def has_button(window, name):
+        return (
+            dfs(
+                window,
+                lambda el, role, title, ident: role == kAXButtonRole and title == name,
+            )
+            is not None
+        )
+
+    candidates = ax_get(ax_app, kAXWindowsAttribute) or []
+    candidates = sorted(
+        candidates,
+        key=lambda w: ax_get(w, kAXTitleAttribute) in _MAIN_WINDOW_TITLES,
+    )
+    for candidate in candidates:
+        if has_button(candidate, "Post") and has_button(candidate, "Refresh"):
+            return candidate
+    return None
 
 
 def _open_moment_composer(moments_window: Any) -> None:
